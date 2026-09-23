@@ -67,6 +67,9 @@
 //                when using nvcc or clang with ptx target."
 //   __CUDA_ARCH__  is only defined when doing the device pass. "Do this only
 //                for code that will actually run on the GPU."
+//   __HIP__      is the HIP counterpart of __CUDACC__, and
+//   __HIP_DEVICE_COMPILE__ the HIP counterpart of __CUDA_ARCH__, for
+//                compiling to AMD GPU targets.
 
 
 // Define OIIO_GNUC_VERSION to hold an encoded gcc version (e.g. 40802 for
@@ -535,8 +538,9 @@
 
 
 // OIIO_HOSTDEVICE is used before a function declaration to supply the
-// function decorators needed when compiling for CUDA devices.
-#ifdef __CUDACC__
+// function decorators needed when compiling for GPU devices. CUDA and HIP
+// spell the decorators identically but announce themselves differently.
+#if defined(__CUDACC__) || defined(__HIP__)
 #    define OIIO_HOSTDEVICE __host__ __device__
 #    define OIIO_DEVICE __device__
 #else
@@ -546,8 +550,8 @@
 
 
 // OIIO_DEVICE_CONSTEXPR is like OIIO_HOSTDEVICE, but it's `constexpr` only on
-// the Cuda device side, and merely inline (not constexpr) on the host side.
-#ifdef __CUDA_ARCH__
+// the GPU device side, and merely inline (not constexpr) on the host side.
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
 #    define OIIO_DEVICE_CONSTEXPR __device__ constexpr
 #else
 #    define OIIO_DEVICE_CONSTEXPR /*__host__*/ inline
