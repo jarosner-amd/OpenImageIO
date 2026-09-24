@@ -33,7 +33,11 @@ bitcast(const From& from) noexcept
     // this may all be replaced with C++20 std::bit_cast, but we should not do
     // so without checking that it works ok for vectorized loops.
     To result;
+#if defined(__HIP_DEVICE_COMPILE__)
+    __builtin_memcpy((void*)&result, &from, sizeof(From));
+#else
     memcpy((void*)&result, &from, sizeof(From));
+#endif
     return result;
 }
 
@@ -62,6 +66,16 @@ OIIO_NODISCARD inline OIIO_HOSTDEVICE T
 byteswap(T n)
 {
     unsigned char* c = reinterpret_cast<unsigned char*>(&n);
+#if defined(__HIP_DEVICE_COMPILE__)
+    // The host C++ library's std::swap need not be device callable.
+    if (sizeof(T) == 2 || sizeof(T) == 4 || sizeof(T) == 8) {
+        for (size_t i = 0; i < sizeof(T) / 2; ++i) {
+            unsigned char t      = c[i];
+            c[i]                 = c[sizeof(T) - 1 - i];
+            c[sizeof(T) - 1 - i] = t;
+        }
+    }
+#else
     if (sizeof(T) == 2) {
         std::swap(c[0], c[1]);
     } else if (sizeof(T) == 4) {
@@ -73,12 +87,15 @@ byteswap(T n)
         std::swap(c[2], c[5]);
         std::swap(c[3], c[4]);
     }
+#endif
     return n;
 }
 
 
 
-#if (OIIO_GNUC_VERSION || OIIO_ANY_CLANG) && !defined(__CUDACC__)
+#if (OIIO_GNUC_VERSION || OIIO_ANY_CLANG     \
+     || OIIO_INTEL_CLASSIC_COMPILER_VERSION) \
+    && !defined(__CUDACC__) && !defined(__HIP__)
 // CPU gcc and compatible can use these intrinsics, 8-15x faster
 
 template<>
@@ -137,7 +154,7 @@ byteswap(double f)
     return bitcast<double>(byteswap(bitcast<uint64_t>(f)));
 }
 
-#elif defined(_MSC_VER) && !defined(__CUDACC__)
+#elif defined(_MSC_VER) && !defined(__CUDACC__) && !defined(__HIP__)
 // CPU MSVS can use these intrinsics
 
 template<>

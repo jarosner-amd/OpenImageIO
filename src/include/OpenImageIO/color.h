@@ -507,7 +507,7 @@ sRGB_to_linear(float x)
 }
 
 
-#ifndef __CUDA_ARCH__
+#if !defined(__CUDA_ARCH__) && !defined(__HIP_DEVICE_COMPILE__)
 OIIO_NODISCARD inline simd::vfloat4
 sRGB_to_linear(const simd::vfloat4& x)
 {
@@ -527,7 +527,7 @@ linear_to_sRGB(float x)
 }
 
 
-#ifndef __CUDA_ARCH__
+#if !defined(__CUDA_ARCH__) && !defined(__HIP_DEVICE_COMPILE__)
 /// Utility -- convert linear value to sRGB transfer function, without
 /// any change in color primaries.
 OIIO_NODISCARD inline simd::vfloat4

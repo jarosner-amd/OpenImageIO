@@ -80,7 +80,7 @@
 
 // FARMHASH PORTABILITY LAYER: "static inline" or similar
 
-// Make static inline 'const expr, if possible.  Also, try to make CUDA friendly
+// Make static inline 'const expr, if possible. Also, make CUDA/HIP friendly
 // for device code.
 #undef STATIC_INLINE
 #define HASH_CAN_USE_CONSTEXPR 1
@@ -473,7 +473,7 @@ OIIO_NAMESPACE_3_1_END
 #endif
 
 // clang seems to define __x86_64 flags etc. even if you're compiling for gpu-device
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
 #  undef  _x86_64
 #  define _x86_64       0
 #  undef  x86
@@ -512,7 +512,7 @@ OIIO_NAMESPACE_3_1_BEGIN
     namespace farmhash {
     namespace inlined {
 
-#ifndef __CUDA_ARCH__
+#if !defined(__CUDA_ARCH__) && !defined(__HIP_DEVICE_COMPILE__)
 #if can_use_ssse3 || can_use_sse41 || can_use_sse42 || can_use_aesni || can_use_avx
 STATIC_INLINE __m128i Fetch128(const char* s) {
   return _mm_loadu_si128(reinterpret_cast<const __m128i*>(s));
