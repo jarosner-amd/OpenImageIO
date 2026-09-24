@@ -1550,7 +1550,9 @@ OIIO_FORCEINLINE simd::vint4 fast_rint (const simd::vfloat4& x) {
 
 
 OIIO_FORCEINLINE OIIO_HOSTDEVICE float fast_sin (float x) {
-#if !defined(__CUDA_ARCH__) && !defined(__HIP_DEVICE_COMPILE__)
+#if defined(__HIP_DEVICE_COMPILE__)
+    return sinf(x);
+#elif !defined(__CUDA_ARCH__)
     // very accurate argument reduction from SLEEF
     // starts failing around x=262000
     // Results on: [-2pi,2pi]
@@ -1582,7 +1584,9 @@ OIIO_FORCEINLINE OIIO_HOSTDEVICE float fast_sin (float x) {
 
 
 OIIO_FORCEINLINE OIIO_HOSTDEVICE float fast_cos (float x) {
-#if !defined(__CUDA_ARCH__) && !defined(__HIP_DEVICE_COMPILE__)
+#if defined(__HIP_DEVICE_COMPILE__)
+    return cosf(x);
+#elif !defined(__CUDA_ARCH__)
     // same argument reduction as fast_sin
     int q = fast_rint (x * float(M_1_PI));
     float qf = float(q);
@@ -1609,7 +1613,9 @@ OIIO_FORCEINLINE OIIO_HOSTDEVICE float fast_cos (float x) {
 
 
 OIIO_FORCEINLINE OIIO_HOSTDEVICE void fast_sincos (float x, float* sine, float* cosine) {
-#if !defined(__CUDA_ARCH__) && !defined(__HIP_DEVICE_COMPILE__)
+#if defined(__HIP_DEVICE_COMPILE__)
+    sincosf(x, sine, cosine);
+#elif !defined(__CUDA_ARCH__)
     // same argument reduction as fast_sin
     int q = fast_rint (x * float(M_1_PI));
     float qf = float(q);
@@ -1643,7 +1649,9 @@ OIIO_FORCEINLINE OIIO_HOSTDEVICE void fast_sincos (float x, float* sine, float* 
 // NOTE: this approximation is only valid on [-8192.0,+8192.0], it starts becoming
 // really poor outside of this range because the reciprocal amplifies errors
 OIIO_FORCEINLINE OIIO_HOSTDEVICE float fast_tan (float x) {
-#if !defined(__CUDA_ARCH__) && !defined(__HIP_DEVICE_COMPILE__)
+#if defined(__HIP_DEVICE_COMPILE__)
+    return tanf(x);
+#elif !defined(__CUDA_ARCH__)
     // derived from SLEEF implementation
     // note that we cannot apply the "denormal crush" trick everywhere because
     // we sometimes need to take the reciprocal of the polynomial
@@ -1829,7 +1837,9 @@ OIIO_FORCEINLINE OIIO_HOSTDEVICE T fast_log2 (const T& xval) {
 
 template<>
 OIIO_FORCEINLINE OIIO_HOSTDEVICE float fast_log2 (const float& xval) {
-#if !defined(__CUDA_ARCH__) && !defined(__HIP_DEVICE_COMPILE__)
+#if defined(__HIP_DEVICE_COMPILE__)
+    return log2f(xval);
+#elif !defined(__CUDA_ARCH__)
     // NOTE: clamp to avoid special cases and make result "safe" from large negative values/nans
     float x = clamp (xval, std::numeric_limits<float>::min(), std::numeric_limits<float>::max());
     // based on https://github.com/LiraNuna/glsl-sse2/blob/master/source/vec4.h
@@ -1863,11 +1873,15 @@ OIIO_FORCEINLINE OIIO_HOSTDEVICE T fast_log (const T& x) {
     return fast_log2(x) * T(M_LN2);
 }
 
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
 template<>
 OIIO_FORCEINLINE OIIO_HOSTDEVICE float fast_log(const float& x)
 {
+#if defined(__HIP_DEVICE_COMPILE__)
+     return logf(x);
+#else
      return __logf(x);
+#endif
 }
 #endif
 
@@ -1878,11 +1892,15 @@ OIIO_FORCEINLINE OIIO_HOSTDEVICE T fast_log10 (const T& x) {
     return fast_log2(x) * T(M_LN2 / M_LN10);
 }
 
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
 template<>
 OIIO_FORCEINLINE OIIO_HOSTDEVICE float fast_log10(const float& x)
 {
+#if defined(__HIP_DEVICE_COMPILE__)
+     return log10f(x);
+#else
      return __log10f(x);
+#endif
 }
 #endif
 
@@ -2003,10 +2021,14 @@ OIIO_FORCEINLINE OIIO_HOSTDEVICE T fast_exp (const T& x) {
     return fast_exp2(x * T(1 / M_LN2));
 }
 
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
 template<>
 OIIO_FORCEINLINE OIIO_HOSTDEVICE float fast_exp (const float& x) {
+#if defined(__HIP_DEVICE_COMPILE__)
+    return expf(x);
+#else
     return __expf(x);
+#endif
 }
 #endif
 
@@ -2026,7 +2048,9 @@ OIIO_FORCEINLINE OIIO_HOSTDEVICE float fast_correct_exp (float x)
 
 
 OIIO_FORCEINLINE OIIO_HOSTDEVICE float fast_exp10 (float x) {
-#if !defined(__CUDA_ARCH__) && !defined(__HIP_DEVICE_COMPILE__)
+#if defined(__HIP_DEVICE_COMPILE__)
+    return exp10f(x);
+#elif !defined(__CUDA_ARCH__)
     // Examined 2217701018 values of exp10 on [-37.9290009,37.9290009]: 2.71732409 avg ulp diff, 232 max ulp
     return fast_exp2(x * float(M_LN10 / M_LN2));
 #else
