@@ -1730,7 +1730,9 @@ OIIO_FORCEINLINE OIIO_HOSTDEVICE float fast_cospi (float x)
 }
 
 OIIO_FORCEINLINE OIIO_HOSTDEVICE float fast_acos (float x) {
-#if !defined(__CUDA_ARCH__) && !defined(__HIP_DEVICE_COMPILE__)
+    // Also used on HIP devices: it clamps |x| to 1 (and maps NaN like the
+    // CPU), which the device library's acosf does not.
+#if !defined(__CUDA_ARCH__)
     const float f = fabsf(x);
     const float m = (f < 1.0f) ? 1.0f - (1.0f - f) : 1.0f; // clamp and crush denormals
     // based on http://www.pouet.net/topic.php?which=9132&page=2
@@ -1745,7 +1747,8 @@ OIIO_FORCEINLINE OIIO_HOSTDEVICE float fast_acos (float x) {
 }
 
 OIIO_FORCEINLINE OIIO_HOSTDEVICE float fast_asin (float x) {
-#if !defined(__CUDA_ARCH__) && !defined(__HIP_DEVICE_COMPILE__)
+    // Also used on HIP devices, for the same clamping as fast_acos.
+#if !defined(__CUDA_ARCH__)
     // based on acosf approximation above
     // max error is 4.51133e-05 (ulps are higher because we are consistently off by a little amount)
     const float f = fabsf(x);
@@ -1838,7 +1841,9 @@ OIIO_FORCEINLINE OIIO_HOSTDEVICE T fast_log2 (const T& xval) {
 template<>
 OIIO_FORCEINLINE OIIO_HOSTDEVICE float fast_log2 (const float& xval) {
 #if defined(__HIP_DEVICE_COMPILE__)
-    return log2f(xval);
+    // Same clamp as the CPU version, so the result stays finite.
+    return log2f(clamp(xval, std::numeric_limits<float>::min(),
+                       std::numeric_limits<float>::max()));
 #elif !defined(__CUDA_ARCH__)
     // NOTE: clamp to avoid special cases and make result "safe" from large negative values/nans
     float x = clamp (xval, std::numeric_limits<float>::min(), std::numeric_limits<float>::max());
@@ -1878,7 +1883,9 @@ template<>
 OIIO_FORCEINLINE OIIO_HOSTDEVICE float fast_log(const float& x)
 {
 #if defined(__HIP_DEVICE_COMPILE__)
-     return logf(x);
+     // Same clamp as the CPU version (via fast_log2).
+     return logf(clamp(x, std::numeric_limits<float>::min(),
+                       std::numeric_limits<float>::max()));
 #else
      return __logf(x);
 #endif
@@ -1897,7 +1904,9 @@ template<>
 OIIO_FORCEINLINE OIIO_HOSTDEVICE float fast_log10(const float& x)
 {
 #if defined(__HIP_DEVICE_COMPILE__)
-     return log10f(x);
+     // Same clamp as the CPU version (via fast_log2).
+     return log10f(clamp(x, std::numeric_limits<float>::min(),
+                         std::numeric_limits<float>::max()));
 #else
      return __log10f(x);
 #endif
@@ -1905,7 +1914,9 @@ OIIO_FORCEINLINE OIIO_HOSTDEVICE float fast_log10(const float& x)
 #endif
 
 OIIO_FORCEINLINE OIIO_HOSTDEVICE float fast_logb (float x) {
-#if !defined(__CUDA_ARCH__) && !defined(__HIP_DEVICE_COMPILE__)
+    // Also used on HIP devices: it clamps like fast_log2, while the device
+    // library's logbf returns -inf for 0.
+#if !defined(__CUDA_ARCH__)
     // don't bother with denormals
     x = fabsf(x);
     if (x < std::numeric_limits<float>::min()) x = std::numeric_limits<float>::min();
